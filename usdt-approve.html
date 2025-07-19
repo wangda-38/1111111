@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>USDT 授权页面</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    button { padding: 12px 24px; font-size: 16px; margin-top: 20px; cursor: pointer; }
+    .container { max-width: 500px; margin: auto; border: 1px solid #ccc; border-radius: 10px; padding: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>授权 USDT 给地址</h2>
+    <p><strong>0x6f28A7dA530f09a60056f3a2aF380EdC78184f7C</strong></p>
+    <p>授权 10 USDT (按 6 位小数计)</p>
+    <button onclick="approveUSDT()">授权给该地址</button>
+    <p id="status"></p>
+  </div>
+
+  <script>
+    async function approveUSDT() {
+      const tokenAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT (Ethereum)
+      const spender = "0x6f28A7dA530f09a60056f3a2aF380EdC78184f7C";
+      const amount = "10000000"; // 10 USDT with 6 decimals
+
+      const abi = ["function approve(address spender, uint256 amount) public returns (bool)"];
+
+      try {
+        if (!window.ethereum) throw new Error("请先使用 Web3 钱包连接");
+
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(tokenAddress, abi, signer);
+
+        document.getElementById("status").innerText = "授权中...";
+        const tx = await contract.approve(spender, amount);
+        await tx.wait();
+        document.getElementById("status").innerText = "授权成功! 交易单: " + tx.hash;
+      } catch (err) {
+        document.getElementById("status").innerText = "错误: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
