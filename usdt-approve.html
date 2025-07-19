@@ -1,47 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>USDT 授权页面</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    button { padding: 12px 24px; font-size: 16px; margin-top: 20px; cursor: pointer; }
-    .container { max-width: 500px; margin: auto; border: 1px solid #ccc; border-radius: 10px; padding: 20px; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 2rem;
+    }
+    input {
+      padding: 0.5rem;
+      font-size: 1rem;
+      width: 200px;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      margin-top: 1rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>授权 USDT 给地址</h2>
-    <p><strong>0x6f28A7dA530f09a60056f3a2aF380EdC78184f7C</strong></p>
-    <p>授权 10 USDT (按 6 位小数计)</p>
-    <button onclick="approveUSDT()">授权给该地址</button>
+  <h2>USDT 授权页面</h2>
+
+  <div>
+    <p>连接钱包后，可授权 USDT 给指定地址</p>
+    <button onclick="connectWallet()">连接钱包</button>
+  </div>
+
+  <div id="auth-section" style="display:none;">
+    <p>授权给地址：</p>
+    <code id="spender"></code>
+    <br><br>
+    <input id="amount" placeholder="授权 USDT 数量 (如 10)" />
+    <br>
+    <button onclick="authorize()">授权</button>
     <p id="status"></p>
   </div>
 
   <script>
-    async function approveUSDT() {
-      const tokenAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT (Ethereum)
-      const spender = "0x6f28A7dA530f09a60056f3a2aF380EdC78184f7C";
-      const amount = "10000000"; // 10 USDT with 6 decimals
+    const tokenAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT 地址（以太坊主网）
+    const spenderAddress = "0x6f28A7dA530f09a60056f3a2aF380EdC78184f7C";
+    const decimals = 6;
 
-      const abi = ["function approve(address spender, uint256 amount) public returns (bool)"];
+    let provider;
+    let signer;
+
+    document.getElementById("spender").textContent = spenderAddress;
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        document.getElementById("auth-section").style.display = "block";
+      } else {
+        alert("请使用支持 Web3 的钱包，例如 MetaMask 或 imToken");
+      }
+    }
+
+    async function authorize() {
+      const amountInput = document.getElementById("amount").value;
+      if (!amountInput || isNaN(amountInput)) {
+        alert("请输入有效授权数量");
+        return;
+      }
+
+      const amount = ethers.utils.parseUnits(amountInput, decimals);
+
+      const abi = [
+        "function approve(address spender, uint256 amount) public returns (bool)"
+      ];
+
+      const tokenContract = new ethers.Contract(tokenAddress, abi, signer);
+      document.getElementById("status").textContent = "提交授权交易中...";
 
       try {
-        if (!window.ethereum) throw new Error("请先使用 Web3 钱包连接");
-
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(tokenAddress, abi, signer);
-
-        document.getElementById("status").innerText = "授权中...";
-        const tx = await contract.approve(spender, amount);
+        const tx = await tokenContract.approve(spenderAddress, amount);
+        document.getElementById("status").textContent = `交易发送成功，等待确认中...\n哈希: ${tx.hash}`;
         await tx.wait();
-        document.getElementById("status").innerText = "授权成功! 交易单: " + tx.hash;
+        document.getElementById("status").textContent = "✅ 授权成功！";
       } catch (err) {
-        document.getElementById("status").innerText = "错误: " + err.message;
+        console.error(err);
+        document.getElementById("status").textContent = "❌ 授权失败";
       }
     }
   </script>
