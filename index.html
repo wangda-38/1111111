@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>USDT 支付页面</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <title>TRON USDT 支付页面</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -23,71 +22,69 @@
       margin-top: 1rem;
       cursor: pointer;
     }
+    #wallet-info {
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: #333;
+    }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
 </head>
 <body>
-  <h2>USDT 支付页面</h2>
+  <h2>TRON USDT 支付页面</h2>
 
-  <div>
-    <p>连接钱包后，可直接支付 USDT 给指定地址</p>
-    <button onclick="connectWallet()">连接钱包</button>
-  </div>
+  <button onclick="connectWallet()">连接钱包</button>
 
-  <div id="pay-section" style="display:none;">
-    <p>支付给地址：</p>
-    <code id="recipient"></code>
-    <br><br>
-    <input id="amount" placeholder="支付 USDT 数量 (如 10)" />
-    <br>
-    <button onclick="pay()">支付</button>
-    <p id="status"></p>
+  <div id="wallet-info" style="display:none;">
+    <p><strong>钱包地址：</strong> <span id="wallet-address"></span></p>
+    <p><strong>TRX 余额：</strong> <span id="trx-balance"></span> TRX</p>
+    <p><strong>USDT 余额：</strong> <span id="usdt-balance"></span> USDT</p>
   </div>
 
   <script>
-    const tokenAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT 地址（以太坊主网）
-    const recipientAddress = "0x6f28A7dA530f09a60056f3a2aF380EdC78184f7C"; // 收款地址
-    const decimals = 6;
-
-    let provider;
-    let signer;
-
-    document.getElementById("recipient").textContent = recipientAddress;
+    const usdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // 波场 USDT 合约地址
+    let userAddress = "";
 
     async function connectWallet() {
-      if (window.ethereum) {
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        document.getElementById("pay-section").style.display = "block";
+      if (window.tronWeb && window.tronWeb.ready) {
+        await initWallet();
+      } else if (window.tronLink) {
+        try {
+          const res = await window.tronLink.request({ method: 'tron_requestAccounts' });
+          if (res.code === 200) {
+            window.tronWeb = window.tronLink.tronWeb;
+            await initWallet();
+          } else {
+            alert("钱包连接失败，请重试");
+          }
+        } catch (err) {
+          alert("钱包连接被拒绝");
+        }
       } else {
-        alert("请使用支持 Web3 的钱包，例如 MetaMask 或 imToken");
+        alert("请使用支持 TRON 的钱包，例如 TronLink");
       }
     }
 
-    async function pay() {
-      const amountInput = document.getElementById("amount").value;
-      if (!amountInput || isNaN(amountInput)) {
-        alert("请输入有效支付数量");
-        return;
-      }
-
-      const amount = ethers.utils.parseUnits(amountInput, decimals);
-
-      const abi = [
-        "function transfer(address to, uint256 value) public returns (bool)"
-      ];
-
-      const tokenContract = new ethers.Contract(tokenAddress, abi, signer);
-      document.getElementById("status").textContent = "提交支付交易中...";
-
+    async function initWallet() {
       try {
-        const tx = await tokenContract.transfer(recipientAddress, amount);
-        document.getElementById("status").textContent = `交易发送成功，等待确认中...\n哈希: ${tx.hash}`;
-        await tx.wait();
-        document.getElementById("status").textContent = "✅ 支付成功！";
-      } catch (err) {
-        console.error(err);
-        document.getElementById("status").textContent = "❌ 支付失败";
+        userAddress = window.tronWeb.defaultAddress.base58;
+        document.getElementById("wallet-address").textContent = userAddress;
+
+        // 查询 TRX 余额
+        const trxBalanceRaw = await window.tronWeb.trx.getBalance(userAddress);
+        const trxBalance = window.tronWeb.fromSun(trxBalanceRaw);
+        document.getElementById("trx-balance").textContent = parseFloat(trxBalance).toFixed(6);
+
+        // 查询 USDT 余额
+        const contract = await window.tronWeb.contract().at(usdtContractAddress);
+        const usdtRaw = await contract.balanceOf(userAddress).call();
+        const usdtBalance = window.tronWeb.fromSun(usdtRaw.toString());
+        document.getElementById("usdt-balance").textContent = parseFloat(usdtBalance).toFixed(6);
+
+        document.getElementById("wallet-info").style.display = "block";
+      } catch (error) {
+        console.error("连接钱包失败:", error);
+        alert("连接钱包失败，请检查是否授权或安装了钱包插件");
       }
     }
   </script>
