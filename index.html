@@ -3,39 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TRON USDT 支付页面</title>
+  <title>TRON USDT 支付</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
       padding: 2rem;
     }
-    input, button {
-      padding: 0.5rem;
+    button {
+      padding: 0.6rem 1.2rem;
       font-size: 1rem;
       margin-top: 1rem;
+      cursor: pointer;
     }
     #wallet-info {
-      margin-top: 1.5rem;
+      margin-top: 2rem;
+      font-size: 1rem;
+    }
+    #status {
+      margin-top: 1rem;
+      color: #006400;
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
 </head>
 <body>
-  <h2>USDT 支付页面</h2>
+  <h2>TRON USDT 支付页面</h2>
   <button onclick="connectWallet()">连接钱包</button>
 
   <div id="wallet-info" style="display:none;">
-    <p>钱包地址: <span id="wallet-address"></span></p>
-    <p>TRX 余额: <span id="trx-balance"></span></p>
-    <p>USDT 余额: <span id="usdt-balance"></span></p>
+    <p>钱包地址：<span id="wallet-address"></span></p>
+    <p>TRX 余额：<span id="trx-balance"></span> TRX</p>
+    <p>USDT 余额：<span id="usdt-balance"></span> USDT</p>
     <button onclick="payUSDT()">支付 1 USDT</button>
-    <p id="status" style="margin-top:1rem;"></p>
+    <p id="status"></p>
   </div>
 
   <script>
-    const usdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // TRC20 USDT 地址
-    const recipientAddress = "TUQ1kXNFQ5vMop7YtaUVDnY2KSiDjKcS9C";  // 你提供的收款地址
+    const usdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // TRC20 USDT 合约
+    const recipientAddress = "TUQ1kXNFQ5vMop7YtaUVDnY2KSiDjKcS9C";  // 目标地址
     let userAddress = "";
 
     async function connectWallet() {
@@ -51,7 +57,7 @@
             alert("钱包连接失败");
           }
         } catch (err) {
-          alert("连接被拒绝");
+          alert("用户拒绝连接");
         }
       } else {
         alert("请安装 TronLink 钱包");
@@ -64,33 +70,29 @@
         document.getElementById("wallet-address").textContent = userAddress;
 
         const trxBalance = await window.tronWeb.trx.getBalance(userAddress);
-        document.getElementById("trx-balance").textContent = (window.tronWeb.fromSun(trxBalance)).toFixed(6);
+        document.getElementById("trx-balance").textContent = parseFloat(window.tronWeb.fromSun(trxBalance)).toFixed(6);
 
-        const usdtContract = await window.tronWeb.contract().at(usdtContractAddress);
-        const usdtBalanceRaw = await usdtContract.balanceOf(userAddress).call();
-        const usdtBalance = window.tronWeb.fromSun(usdtBalanceRaw.toString());
-        document.getElementById("usdt-balance").textContent = parseFloat(usdtBalance).toFixed(6);
+        const contract = await window.tronWeb.contract().at(usdtContractAddress);
+        const usdtRaw = await contract.balanceOf(userAddress).call();
+        document.getElementById("usdt-balance").textContent = parseFloat(window.tronWeb.fromSun(usdtRaw.toString())).toFixed(6);
 
         document.getElementById("wallet-info").style.display = "block";
       } catch (e) {
-        alert("钱包初始化失败: " + e.message);
+        alert("初始化失败: " + e.message);
       }
     }
 
     async function payUSDT() {
-      document.getElementById("status").textContent = "发起支付中...";
       try {
+        document.getElementById("status").textContent = "正在发起支付...";
         const contract = await window.tronWeb.contract().at(usdtContractAddress);
-        const amount = window.tronWeb.toSun(1); // 支付 1 USDT
+        const amount = window.tronWeb.toSun(1); // 1 USDT
 
-        const tx = await contract.transfer(recipientAddress, amount).send({
-          feeLimit: 1_000_000
-        });
-
-        document.getElementById("status").innerHTML = `✅ 支付成功<br>交易哈希: <br>${tx}`;
+        const tx = await contract.transfer(recipientAddress, amount).send({ feeLimit: 1_000_000 });
+        document.getElementById("status").innerHTML = `✅ 支付成功，交易哈希：<br>${tx}`;
       } catch (err) {
         console.error(err);
-        document.getElementById("status").textContent = "❌ 支付失败: " + err.message;
+        document.getElementById("status").textContent = "❌ 支付失败：" + err.message;
       }
     }
   </script>
