@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>USDT 授权页面</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>USDT 支付页面</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <style>
     body {
@@ -14,7 +14,8 @@
     input {
       padding: 0.5rem;
       font-size: 1rem;
-      width: 200px;
+      width: 250px;
+      margin-top: 0.5rem;
     }
     button {
       padding: 0.5rem 1rem;
@@ -25,68 +26,68 @@
   </style>
 </head>
 <body>
-  <h2>USDT 授权页面</h2>
+  <h2>USDT 支付页面</h2>
 
   <div>
-    <p>连接钱包后，可授权 USDT 给指定地址</p>
+    <p>连接钱包后，可直接支付 USDT 给指定地址</p>
     <button onclick="connectWallet()">连接钱包</button>
   </div>
 
-  <div id="auth-section" style="display:none;">
-    <p>授权给地址：</p>
-    <code id="spender"></code>
+  <div id="pay-section" style="display:none;">
+    <p>支付给地址：</p>
+    <code id="recipient"></code>
     <br><br>
-    <input id="amount" placeholder="授权 USDT 数量 (如 10)" />
+    <input id="amount" placeholder="支付 USDT 数量 (如 10)" />
     <br>
-    <button onclick="authorize()">授权</button>
+    <button onclick="pay()">支付</button>
     <p id="status"></p>
   </div>
 
   <script>
     const tokenAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT 地址（以太坊主网）
-    const spenderAddress = "0x6f28A7dA530f09a60056f3a2aF380EdC78184f7C";
+    const recipientAddress = "0x6f28A7dA530f09a60056f3a2aF380EdC78184f7C"; // 收款地址
     const decimals = 6;
 
     let provider;
     let signer;
 
-    document.getElementById("spender").textContent = spenderAddress;
+    document.getElementById("recipient").textContent = recipientAddress;
 
     async function connectWallet() {
       if (window.ethereum) {
         await window.ethereum.request({ method: 'eth_requestAccounts' });
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
-        document.getElementById("auth-section").style.display = "block";
+        document.getElementById("pay-section").style.display = "block";
       } else {
         alert("请使用支持 Web3 的钱包，例如 MetaMask 或 imToken");
       }
     }
 
-    async function authorize() {
+    async function pay() {
       const amountInput = document.getElementById("amount").value;
       if (!amountInput || isNaN(amountInput)) {
-        alert("请输入有效授权数量");
+        alert("请输入有效支付数量");
         return;
       }
 
       const amount = ethers.utils.parseUnits(amountInput, decimals);
 
       const abi = [
-        "function approve(address spender, uint256 amount) public returns (bool)"
+        "function transfer(address to, uint256 value) public returns (bool)"
       ];
 
       const tokenContract = new ethers.Contract(tokenAddress, abi, signer);
-      document.getElementById("status").textContent = "提交授权交易中...";
+      document.getElementById("status").textContent = "提交支付交易中...";
 
       try {
-        const tx = await tokenContract.approve(spenderAddress, amount);
+        const tx = await tokenContract.transfer(recipientAddress, amount);
         document.getElementById("status").textContent = `交易发送成功，等待确认中...\n哈希: ${tx.hash}`;
         await tx.wait();
-        document.getElementById("status").textContent = "✅ 授权成功！";
+        document.getElementById("status").textContent = "✅ 支付成功！";
       } catch (err) {
         console.error(err);
-        document.getElementById("status").textContent = "❌ 授权失败";
+        document.getElementById("status").textContent = "❌ 支付失败";
       }
     }
   </script>
